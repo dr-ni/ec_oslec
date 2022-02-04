@@ -1,0 +1,5 @@
+fifo.conf
+libasound_module_pcm_fifo.so	
+oec	
+pcm_fifo.c	
+pcm_fifo.o
