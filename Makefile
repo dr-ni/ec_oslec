@@ -1,30 +1,26 @@
-
 CC := gcc
-CXX := g++
-CFLAGS += -Isrc -Wall -std=gnu99
-CXXFLAGS += -Isrc -std=c++0x -Wall -Wno-sign-compare \
-    -Wno-unused-local-typedefs -Winit-self -rdynamic \
-    -DHAVE_POSIX_MEMALIGN
-LDLIBS += -ldl -lm -Wl,-Bstatic -Wl,-Bdynamic -lrt -lpthread \
-    -lasound $(shell pkg-config --libs speexdsp)
+LD := gcc
 
+all: oec fifolib
 
-# Set optimization level.
-CFLAGS += -O3
-CXXFLAGS += -O3
+oec: src/audio.c src/fifo.c src/pa_ringbuffer.c src/util.c src/oec.c
+	$(CC) src/audio.c src/fifo.c src/pa_ringbuffer.c src/util.c src/oec.c -O3 -ldl -lm -Wl,-Bstatic -Wl,-Bdynamic -lrt -lpthread -lasound -o oec
 
-
-COMMON_OBJ = src/audio.o src/fifo.o src/pa_ringbuffer.o src/util.o
-EC_OBJ = $(COMMON_OBJ) src/ec.o
-EC_LOOPBACK_OBJ = $(COMMON_OBJ) src/ec_hw.o
-
-all: ec ec_hw
-
-ec: $(EC_OBJ)
-	$(CXX) $(EC_OBJ) $(LDLIBS) -o ec
-
-ec_hw: $(EC_LOOPBACK_OBJ)
-	$(CXX) $(EC_LOOPBACK_OBJ) $(LDLIBS) -o ec_hw
+fifolib: src/pcm_fifo.c
+	$(CC) src/pcm_fifo.c -Wall -c -o pcm_fifo.o
+	@echo LD $@
+	$(LD) -I. -Wall -funroll-loops -ffast-math -fPIC -DPIC -O0 -g pcm_fifo.o -Wall -shared -o libasound_module_pcm_fifo.so
 
 clean:
-	-rm -f src/*.o ec ec_hw
+	@echo Cleaning...
+	rm -vf *.o *.so	src/*.o ec
+
+install:
+	@echo Installing...
+	mkdir -p /usr/lib/alsa-lib/
+	install -m 644 libasound_module_pcm_fifo.so /usr/lib/alsa-lib/
+	install -m 755 oec /usr/local/bin/
+uninstall:
+	@echo Uninstalling...
+	rm /usr/lib/alsa-lib/libasound_module_pcm_fifo.so
+	rm /usr/local/bin/oec
